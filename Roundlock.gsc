@@ -3,7 +3,7 @@
 
 main()
 {
-    level thread setPasswordsOnRound(2);
+    level thread setPasswordsOnRound(20);
     level.locked = false;
 }
 
@@ -49,3 +49,4 @@ generateString()
 
     return str;
 }
+
