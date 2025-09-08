@@ -3,26 +3,25 @@
 
 main()
 {
-    setDvar( "g_password \"\"" );
-    level thread setPasswordsOnRound( 2 );
+    level thread setPasswordsOnRound(2);
     level.locked = false;
 }
 
 setPasswordsOnRound( roundNumber )
 {
-    level endon( "disconnect" );
+    level endon("disconnect");
 
-    while ( true )
+    while (true)
     {
-        level waittill( "between_round_over" );
-        if ( level.round_number >= roundNumber )
+        level waittill("between_round_over");
+        if (level.round_number >= roundNumber)
         {
             level.locked = true;
             pin = generateString();
-            setDvar("g_password " + pin);
-            setDvar("password " + pin);
+            setDvar("g_password", pin);
+            setDvar("password", pin);
 
-            level thread messageRepeat( "^2Server is now locked. Use password ^1" + pin + " ^2to rejoin." );
+            level thread messageRepeat("^2Server is now locked. Use password ^1" + pin + " ^2to rejoin.");
             break;
         }
     }
@@ -30,12 +29,12 @@ setPasswordsOnRound( roundNumber )
 
 messageRepeat( message )
 {
-    level endon( "disconnect" );
-    
-    while ( true )
+    level endon("disconnect");
+
+    while (true)
     {
-        iPrintLn( message );
-        level waittill( "between_round_over" );
+        iPrintLn(message);
+        level waittill("between_round_over");
     }
 }
 
@@ -43,9 +42,9 @@ generateString()
 {
     str = "";
 
-    for ( i = 0; i < 4; i++ )
+    for (i = 0; i < 4; i++)
     {
-        str = str + randomInt( 10 );
+        str = str + randomInt(10);
     }
 
     return str;
