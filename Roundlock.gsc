@@ -3,10 +3,10 @@
 
 main()
 {
-    level thread setPasswordsOnRound(2);
+    level thread setPasswordsOnRound(20);
     level.locked = false;
 
-    // Make sure password resets when game ends
+    
     level thread resetPasswordOnEnd();
 }
 
@@ -56,9 +56,11 @@ generateString()
 resetPasswordOnEnd()
 {
     level endon("disconnect");
-    level waittill("game_ended");
 
-    // Reset password back to blank
+    
+    level waittill("end_game");
+
+    
     setDvar("g_password", "");
     setDvar("password", "");
     iPrintLn("^2Server password has been cleared.");
