@@ -63,5 +63,6 @@ resetPasswordOnEnd()
     
     setDvar("g_password", "");
     setDvar("password", "");
-    iPrintLn("^2Server password has been cleared.");
+   // iPrintLn("^2Server password has been cleared.");
 }
+
