@@ -21,7 +21,7 @@ init()
     println( "[AFK] init() called" );
 
     level.afk_system = spawnStruct();
-    level.afk_system.min_round             = 20
+    level.afk_system.min_round             = 20;
     level.afk_system.cooldown_ms           = 7200000;   // 2 hours
     level.afk_system.duration_s            = 900;        // 15 minutes
     level.afk_system.activation_delay_s   = 60;         // 1-min anti-panic delay
