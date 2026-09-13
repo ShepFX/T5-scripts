@@ -38,171 +38,26 @@ _zc_connect_monitor()
 
 
 // ════════════════════════════════════════════════════════════════════════════
-//  PER-PLAYER PREFERENCE  (single file, one line per player: "name|enabled")
+//  PER-PLAYER PREFERENCE  (memory only; lasts for the current session)
+//
+//  This used to persist to scriptdata/zc_prefs.txt and re-parse the whole file
+//  character by character in GSC on every toggle and every join. With ~2000
+//  lines that took seconds inside one server frame and froze the whole lobby.
+//  The preference now lives on player.pers, same as the T6 version.
 // ════════════════════════════════════════════════════════════════════════════
-
-_zc_prefs_file()
-{
-    return "scriptdata/zc_prefs.txt";
-}
-
-// Strip color codes (^n) and problematic chars so the name is a clean key.
-_zc_safe_name( player )
-{
-    raw = player.playername;
-    if ( !isdefined( raw ) || raw == "" )
-        raw = player.name;
-    if ( !isdefined( raw ) || raw == "" )
-        return "p" + player getEntityNumber();
-
-    result = "";
-    skip   = 0;
-    for ( i = 0; i < raw.size; i++ )
-    {
-        if ( skip > 0 ) { skip--; continue; }
-        c = raw[i];
-        if ( c == "^" ) { skip = 1; continue; }
-        if ( c == " " || c == "/" || c == "\\" || c == ":" || c == "|" )
-            result += "_";
-        else
-            result += c;
-    }
-    if ( result == "" )
-        return "p" + player getEntityNumber();
-    return result;
-}
 
 _zc_load_pref( player )
 {
     if ( isdefined( player.pers["zc_enabled"] ) )
         return player.pers["zc_enabled"];
 
-    name = _zc_safe_name( player );
-
-    file = fs_fopen( _zc_prefs_file(), "read" );
-    if ( !isdefined( file ) || file == 0 )
-    {
-        _zc_save_pref( player, 1 );
-        return 1;
-    }
-
-    len = fs_length( file );
-    if ( len <= 0 )
-    {
-        fs_fclose( file );
-        _zc_save_pref( player, 1 );
-        return 1;
-    }
-
-    content = fs_read( file, len );
-    fs_fclose( file );
-
-    if ( !isdefined( content ) )
-    {
-        _zc_save_pref( player, 1 );
-        return 1;
-    }
-
-    lines = _zc_split( content, "\n" );
-    for ( i = 0; i < lines.size; i++ )
-    {
-        line  = _zc_trim_cr( lines[i] );
-        parts = _zc_split( line, "|" );
-        if ( parts.size >= 2 && parts[0] == name )
-        {
-            enabled = ( parts[1] != "0" );
-            player.pers["zc_enabled"] = enabled;
-            return enabled;
-        }
-    }
-
-    // Player not in the file yet — add them with the default.
-    _zc_save_pref( player, 1 );
+    player.pers["zc_enabled"] = 1;
     return 1;
 }
 
 _zc_save_pref( player, enabled )
 {
     player.pers["zc_enabled"] = enabled;
-
-    name = _zc_safe_name( player );
-    val  = "1";
-    if ( !enabled )
-        val = "0";
-
-    lines = [];
-    found = 0;
-
-    // Read existing entries so we can update in place.
-    file = fs_fopen( _zc_prefs_file(), "read" );
-    if ( isdefined( file ) && file != 0 )
-    {
-        len = fs_length( file );
-        if ( len > 0 )
-        {
-            content = fs_read( file, len );
-            fs_fclose( file );
-            if ( isdefined( content ) )
-            {
-                raw = _zc_split( content, "\n" );
-                for ( i = 0; i < raw.size; i++ )
-                {
-                    line = _zc_trim_cr( raw[i] );
-                    if ( line == "" ) continue;
-                    parts = _zc_split( line, "|" );
-                    if ( parts.size >= 2 && parts[0] == name )
-                    {
-                        lines[lines.size] = name + "|" + val;
-                        found = 1;
-                    }
-                    else
-                    {
-                        lines[lines.size] = line;
-                    }
-                }
-            }
-        }
-        else
-        {
-            fs_fclose( file );
-        }
-    }
-
-    if ( !found )
-        lines[lines.size] = name + "|" + val;
-
-    file = fs_fopen( _zc_prefs_file(), "write" );
-    if ( !isdefined( file ) || file == 0 )
-        return;
-    for ( i = 0; i < lines.size; i++ )
-        fs_writeline( file, lines[i] );
-    fs_fclose( file );
-}
-
-_zc_split( str, delim )
-{
-    parts   = [];
-    current = "";
-    for ( i = 0; i < str.size; i++ )
-    {
-        if ( str[i] == delim )
-        {
-            parts[parts.size] = current;
-            current = "";
-        }
-        else
-            current += str[i];
-    }
-    if ( current != "" )
-        parts[parts.size] = current;
-    return parts;
-}
-
-_zc_trim_cr( s )
-{
-    if ( s.size > 0 && getSubStr( s, s.size - 1, s.size ) == "\r" )
-        return getSubStr( s, 0, s.size - 1 );
-    return s;
 }
 
 

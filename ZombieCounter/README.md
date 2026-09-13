@@ -9,7 +9,7 @@ This GSC script provides a sleek, real-time **Enemy Tracker** for Black Ops 1 (T
 * **Real-Time Tracking:** Monitors remaining zombies and dogs, including those yet to spawn.
 * **Dynamic HUD:** The interface automatically expands to show a "DOGS" row during hellhound rounds.
 * **Low-Health Alerts:** The zombie counter changes color (to a reddish-orange) when 5 or fewer enemies remain.
-* **Persistent Preferences:** Player toggle settings (on/off) are saved to `scriptdata/zc_prefs.txt` and persist across matches.
+* **Session Preferences:** Player toggle settings (on/off) are kept in memory for the session. (File persistence was removed: re-parsing `scriptdata/zc_prefs.txt` on every toggle froze the server once the file grew.)
 * **Polished Animations:** Features fade transitions and a "pulse" effect when numbers update for a professional feel.
 
 ---
