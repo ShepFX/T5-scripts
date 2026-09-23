@@ -15,7 +15,7 @@ A server-side AFK system for **Plutonium Black Ops 1 Zombies** written in GSC. L
 - **Activation delay** — 60-second countdown before AFK activates, cancellable by typing `.afk` again or taking damage
 - **HUD overlay** — AFK label and live countdown timer displayed on screen
 - **Round gate** — only available from round 20 onwards
-- **Cooldown** — 2-hour cooldown between uses per player
+- **Cooldown** — 45-minute cooldown between uses per player
 
 ---
 
@@ -51,7 +51,7 @@ All settings are at the top of `init()` and are easy to adjust:
 
 ```gsc
 level.afk_system.min_round           = 20;       // Minimum round to use AFK
-level.afk_system.cooldown_ms         = 7200000;  // Cooldown between uses (ms) — default 2 hours
+level.afk_system.cooldown_ms         = 2700000;  // Cooldown between uses (ms) — default 45 minutes
 level.afk_system.duration_s          = 900;      // Max AFK duration in seconds — default 15 min
 level.afk_system.activation_delay_s  = 60;       // Countdown before AFK activates — default 60s
 ```

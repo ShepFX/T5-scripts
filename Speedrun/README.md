@@ -38,9 +38,11 @@ Each event appends one line to `scriptdata/speedrun.txt` beside
 Copy `T5Speedrun.gsc` into `raw/scripts/sp/` on the server alongside
 `T5RoundSaverNew.gsc`. Plutonium runs it automatically at map load.
 
-## Known issue
+## Player names
 
-`SrCleanName` is killed by the engine's infinite-loop guard on some player
-connects (see `potential infinite loop in script` in the console). It is
-called from the roster update, so a run may occasionally be logged with an
-unresolved name.
+Black Ops 1 and World at War zombies are built on single-player, where a
+player's name is `.playername`; `.name` is never set. The logger reads
+`.playername` (falling back to `.name`). An earlier version read `.name`: it
+either spun in `SrCleanName` until the engine's infinite-loop guard killed the
+round watcher, or, once guarded, skipped every player - so nothing was logged
+at all on T4/T5 until this was fixed.

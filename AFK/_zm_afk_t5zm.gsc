@@ -2,6 +2,33 @@
 #include maps\_utility;
 #include maps\_zombiemode_utility;
 
+//
+// AFK System for Plutonium T5ZM (Black Ops 1 Zombies)
+// Converted from T4 (_zm_afk_t4.gsc)
+//
+// INSTALL: Place in %localappdata%\Plutonium\storage\t5\raw\scripts\sp
+//
+// Usage: .afk in chat to toggle AFK mode
+// Requires: Round 20+, 45-minute cooldown between uses
+//
+// KEY T4 -> T5ZM CHANGES:
+//   - #include maps\_zombiemode_utility   (kept, valid in T5)
+//   - on_player_connect: waittill "connected" -> waittill "connecting"
+//     (T5ZM fires "connecting" not "connected" for new player joins)
+//   - laststand check: maps\_laststand::player_is_in_laststand()
+//     -> getFunction("maps/_laststand", "player_is_in_laststand")
+//     The _laststand include path differs between T4 and T5; using
+//     getFunction avoids a hard include that may not exist on all maps.
+//   - level.zombie_vars["zombie_max_ai"] freeze logic kept as-is;
+//     T5ZM uses the same zombiemode_vars struct.
+//   - AllowJump() is NOT available in T5. Replaced with a no-op comment.
+//   - setTimer() on HUD elements is available in T5 -- kept as-is.
+//   - getTime() is available in T5 -- kept as-is.
+//
+
+// ============================================================
+// Helper: safe laststand check via getFunction (T5-compatible)
+// ============================================================
 
 player_is_downed()
 {
@@ -22,7 +49,7 @@ init()
 
     level.afk_system = spawnStruct();
     level.afk_system.min_round             = 20;
-    level.afk_system.cooldown_ms           = 7200000;   // 2 hours
+    level.afk_system.cooldown_ms           = 2700000;   // 45 minutes
     level.afk_system.duration_s            = 900;        // 15 minutes
     level.afk_system.activation_delay_s   = 60;         // 1-min anti-panic delay
     level.afk_system.round_frozen         = false;
