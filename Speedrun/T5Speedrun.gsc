@@ -6,8 +6,7 @@
  * with the game time it took. The website turns those lines into "fastest to
  * round N" and "fastest easter egg" boards per map and player count.
  *
- * File format - one line per event, appended by the game. The website trims the
- * file back to the lines still on a board after each read, so it never grows:
+ * File format - one line per event, appended, never rewritten:
  *     <runId>|<mapname>|<kind>|<target>|<ms>|<players>|<id:name,id:name>|<port>
  *
  *     runId    random id for this game, so the site can tell two games apart
@@ -90,11 +89,11 @@ SrWatchRounds() {
         if (!isDefined(level.srStart) || isDefined(level.srInvalid))
             continue;
 
-        // Once a second is plenty for the roster; the round is what needs
-        // watching closely. A round change scans immediately as well, so the
-        // round-2 lock happens on the exact tick.
+        // Once a second is plenty for the roster; scanning it 20 times a second
+        // ran the name cleaner often enough to trip the engine's loop guard.
+        // A round change scans immediately too, so the round-2 lock is exact.
         sinceRoster++;
-        if (sinceRoster >= 20) {
+        if (sinceRoster >= 20 || (isDefined(level.round_number) && level.round_number != lastRound)) {
             sinceRoster = 0;
             SrUpdateRoster();
         }
@@ -103,7 +102,6 @@ SrWatchRounds() {
             continue;
 
         lastRound = level.round_number;
-        SrUpdateRoster();
 
         if (lastRound >= 2)
             level.srRosterLocked = true;
@@ -118,21 +116,6 @@ SrWatchRounds() {
 SrUpdateRoster() {
     players = getplayers();
     for (i = 0; i < players.size; i++) {
-        // World at War / Black Ops zombies are built on single-player, where a
-        // player's name is .playername; .name is not set at all. Fall back to
-        // .name only in case a build ever fills it. A player with neither is
-        // still connecting - the next pass picks them up, and the roster does
-        // not lock until round 2.
-        if (!isDefined(players[i]))
-            continue;
-        name = undefined;
-        if (isDefined(players[i].playername))
-            name = players[i].playername;
-        else if (isDefined(players[i].name))
-            name = players[i].name;
-        if (!isDefined(name))
-            continue;
-
         guid = "" + players[i] getGuid();
         slot = SrRosterIndex(guid);
 
@@ -149,7 +132,7 @@ SrUpdateRoster() {
 
         // Keep the latest name and the IW4MAdmin id, which arrives a few
         // seconds after connecting, so a player who leaves is still credited.
-        level.srRoster[slot].name = SrCleanName(name);
+        level.srRoster[slot].name = SrCachedName(players[i]);
         if (isDefined(players[i].persistentClientId))
             level.srRoster[slot].id = "" + players[i].persistentClientId;
         else if (!isDefined(level.srRoster[slot].id))
@@ -214,18 +197,28 @@ SrPlayerBlocks() {
 }
 
 // Strip the characters the line format uses so a name can never break parsing.
+// The character loop is the expensive part, so run it only when a player's
+// name actually changes rather than on every scan.
+SrCachedName(player) {
+    raw = player.name;
+    if (!isDefined(raw))
+        return "Player";
+
+    if (isDefined(player.srNameRaw) && player.srNameRaw == raw && isDefined(player.srNameClean))
+        return player.srNameClean;
+
+    player.srNameRaw = raw;
+    player.srNameClean = SrCleanName(raw);
+    return player.srNameClean;
+}
+
 SrCleanName(name) {
     if (!isDefined(name))
         return "Player";
 
-    // The count is bounded as well as tested. A connecting player has no name
-    // yet, name.size is undefined, and an unbounded loop here is killed by the
-    // engine - taking the calling thread, and the whole run, with it.
     out = "";
-    for (i = 0; i < 64 && i < name.size; i++) {
+    for (i = 0; i < name.size; i++) {
         c = name[i];
-        if (!isDefined(c))
-            break;
         if (c != "|" && c != ":" && c != "," && c != ";")
             out += c;
     }
