@@ -385,12 +385,23 @@ activate_afk()
     self.afk_saved_origin = self.origin;
     self.afk_saved_angles = self getPlayerAngles();
 
+    // Where the position lock holds the player. Taken from the spawn point
+    // itself: on T5 self.origin still reads the old spot for the rest of this
+    // frame after setOrigin, so a lock that read it would pin the player back
+    // where they went AFK.
+    lock_origin = self.origin;
+    lock_angles = self.afk_saved_angles;
+
     spawn_point = get_afk_spawn_point();
     if ( isDefined( spawn_point ) )
     {
+        lock_origin = spawn_point.origin;
         self setOrigin( spawn_point.origin );
         if ( isDefined( spawn_point.angles ) )
+        {
             self setPlayerAngles( spawn_point.angles );
+            lock_angles = spawn_point.angles;
+        }
         println( "[AFK] teleported " + self.playername + " to spawn" );
     }
 
@@ -435,7 +446,7 @@ activate_afk()
 
     self thread afk_timer_countdown();
     self thread afk_score_lock();
-    self thread afk_position_lock();
+    self thread afk_position_lock( lock_origin, lock_angles );
 
     println( "[AFK] " + self.playername + " is now AFK" );
 }
@@ -449,6 +460,10 @@ deactivate_afk()
 
     self.is_afk = false;
     self.pers["afk_last_used"] = getTime();
+
+    // Stop the position lock (and the score lock and timer) before moving the
+    // player back, or the lock would drag them straight back to spawn.
+    self notify( "afk_ended" );
 
     // Restore controls
     self enableWeapons();
@@ -476,8 +491,6 @@ deactivate_afk()
 
     self.afk_saved_score = undefined;
 
-    self notify( "afk_ended" );
-
     broadcast_iprintln( self.playername + " is no longer ^3AFK^7." );
 
     println( "[AFK] " + self.playername + " is no longer AFK" );
@@ -504,13 +517,10 @@ afk_score_lock()
 }
 
 // Position lock: continuously snap player back to prevent jump-spam movement
-afk_position_lock()
+afk_position_lock( locked_origin, locked_angles )
 {
     self endon( "disconnect" );
     self endon( "afk_ended" );
-
-    locked_origin = self.origin;
-    locked_angles = self getPlayerAngles();
 
     for ( ;; )
     {

@@ -1,9 +1,13 @@
-
+/**
+ * Main function to initialize the high round tracking system.
+ */
 main() {
     level thread InitHighRoundVars();
 }
 
-
+/**
+ * Initializes all necessary level variables and loads existing records.
+ */
 InitHighRoundVars() {
     level.highRoundFile = "scriptdata/highrounds.txt";
     level.highRoundsByMap = [];
@@ -14,9 +18,32 @@ InitHighRoundVars() {
     level thread AnnounceAllCurrentRecords(); 
     level thread MonitorForNewHighRounds();
     level thread MonitorPlayerConnections();
+    level thread ListenForChatCommands();
 }
 
+/**
+ * Listens for chat commands from players.
+ */
+ListenForChatCommands() {
+    level endon("game_ended");
 
+    for (;;) {
+        level waittill("say", text, player);
+
+        if (!isDefined(text) || !isDefined(player))
+            continue;
+
+        command = sanitizeChat(text);
+
+        if (command == ".record" || command == ".records") {
+            player thread ShowPlayerRecords();
+        }
+    }
+}
+
+/**
+ * Monitors for players connecting to the server.
+ */
 MonitorPlayerConnections() {
     for(;;) {
         level waittill("connected", player);
@@ -24,11 +51,65 @@ MonitorPlayerConnections() {
     }
 }
 
-
+/**
+ * Displays the current map's high rounds to a player who just joined.
+ */
 AnnounceRecordsOnJoin() {
     self endon("disconnect");
     
-    wait 10; 
+    wait 10; // Initial delay so the message doesn't get lost on screen load.
+    self thread ShowPlayerRecords();
+}
+
+/**
+ * Helper function to decode "ID:Name" blocks dynamically based on online status.
+ */
+ResolveRecordNames( playersArray ) {
+    if (!isDefined(playersArray) || playersArray.size == 0)
+        return "None";
+
+    current_players = getplayers();
+    resolved_string = "";
+
+    for (i = 0; i < playersArray.size; i++) {
+        block = playersArray[i];
+        split_block = StrSplit(block, ":");
+
+        if (split_block.size < 2)
+            continue;
+
+        target_id = split_block[0];
+        saved_name = split_block[1];
+        found_name = "";
+
+        // Check if the player is currently online
+        for (p = 0; p < current_players.size; p++) {
+            player = current_players[p];
+            if (isDefined(player.persistentClientId) && ("" + player.persistentClientId) == target_id) {
+                found_name = GetPlayerName(player); // Live dynamic name
+                break;
+            }
+        }
+
+        // Fallback to saved text name if they are offline
+        if (found_name == "") {
+            found_name = saved_name;
+        }
+
+        if (resolved_string == "")
+            resolved_string = found_name;
+        else
+            resolved_string += "^7, ^5" + found_name;
+    }
+
+    return resolved_string;
+}
+
+/**
+ * Displays the record information to the calling player.
+ */
+ShowPlayerRecords() {
+    self endon("disconnect");
 
     mapname = getDvar("mapname");
     if (!isDefined(level.highRoundsByMap[mapname])) return;
@@ -40,26 +121,23 @@ AnnounceRecordsOnJoin() {
         recordData = level.highRoundsByMap[mapname][playerCount];
         round = recordData.round;
         
-        message = "";
         mode = GetGameModeString(playerCount);
 
         if (round > 0 && isDefined(recordData.players) && recordData.players.size > 0) {
-            playersString = recordData.players[0];
-            for(i = 1; i < recordData.players.size; i++){
-                playersString += ", " + recordData.players[i];
-            }
+            playersString = ResolveRecordNames(recordData.players);
             message = "^5" + mode + "^7: Round ^5" + round + "^7 by ^5" + playersString;
         } else {
             message = "^5" + mode + "^7: No record set.";
         }
         
         self iprintln(message);
-        wait 1;
+        wait 1; // Stagger messages for readability.
     }
 }
 
-
-
+/**
+ * Ensures that the data structure for the current map is initialized.
+ */
 InitializeDataForCurrentMap() {
     mapname = getDvar("mapname");
     if (!isDefined(level.highRoundsByMap[mapname])) {
@@ -72,7 +150,9 @@ InitializeDataForCurrentMap() {
     }
 }
 
-
+/**
+ * Loads all high round records from the data file into memory.
+ */
 LoadHighRoundsFromFile() {
     file = fs_fopen(level.highRoundFile, "read");
     if (isDefined(file) && file != 0) {
@@ -121,7 +201,9 @@ LoadHighRoundsFromFile() {
     }
 }
 
-
+/**
+ * Saves all high round records from memory back to the data file.
+ */
 SaveHighRoundsToFile() {
     file = fs_fopen(level.highRoundFile, "write");
     if (isDefined(file) && file != 0) {
@@ -149,7 +231,23 @@ SaveHighRoundsToFile() {
     }
 }
 
+/**
+ * Removes dangerous formatting elements like colons, pipes, or semi-colons from raw names.
+ */
+CleanPlayerNameString( name ) {
+    cleaned = "";
+    for(i = 0; i < name.size; i++) {
+        if(name[i] != ":" && name[i] != ";" && name[i] != "|") {
+            cleaned += name[i];
+        }
+    }
+    if(cleaned == "") return "Player";
+    return cleaned;
+}
 
+/**
+ * The main game loop that checks for new high scores after each round.
+ */
 MonitorForNewHighRounds() {
     mapname = getDvar("mapname");
     while (1) {
@@ -166,15 +264,31 @@ MonitorForNewHighRounds() {
         currentRecord = level.highRoundsByMap[mapname][numPlayers].round;
 
         if (currentRound > currentRecord) {
-            playerNames = [];
+            playerDataBlocks = [];
             for (i = 0; i < numPlayers; i++) {
-                playerNames[i] = GetPlayerName(players[i]);
+                p = players[i];
+
+                // Safety Loop: Wait up to 3 seconds for IW4MAdmin framework to load ID
+                waited = 0;
+                while(!isDefined(p.persistentClientId) && waited < 30) {
+                    wait 0.1;
+                    waited++;
+                }
+
+                p_id = "";
+                if(isDefined(p.persistentClientId))
+                    p_id = "" + p.persistentClientId;
+                else
+                    p_id = "" + p getGuid(); // Fallback to engine GUID string
+
+                p_name = CleanPlayerNameString(GetPlayerName(p));
+                playerDataBlocks[i] = p_id + ":" + p_name;
             }
 
             level.highRoundsByMap[mapname][numPlayers].round = currentRound;
-            level.highRoundsByMap[mapname][numPlayers].players = playerNames;
+            level.highRoundsByMap[mapname][numPlayers].players = playerDataBlocks;
             
-            AnnounceNewHighRound(playerNames, currentRound, numPlayers);
+            AnnounceNewHighRound(playerDataBlocks, currentRound, numPlayers);
             SaveHighRoundsToFile();
         }
         else {
@@ -183,7 +297,9 @@ MonitorForNewHighRounds() {
     }
 }
 
-
+/**
+ * Announces all current records for the map at the start of a game.
+ */
 AnnounceAllCurrentRecords() {
     wait 2;
     for (i = 1; i <= 4; i++) {
@@ -192,7 +308,9 @@ AnnounceAllCurrentRecords() {
     }
 }
 
-
+/**
+ * Announces the existing record for a specific player count.
+ */
 AnnounceCurrentRecord(numPlayers) {
     if (numPlayers < 1 || numPlayers > 4) return;
     
@@ -204,11 +322,7 @@ AnnounceCurrentRecord(numPlayers) {
     round = recordData.round;
     
     if (round > 0 && isDefined(players) && players.size > 0) {
-        playersString = players[0];
-        for(i = 1; i < players.size; i++){
-            playersString += ", " + players[i];
-        }
-
+        playersString = ResolveRecordNames(players);
         mode = GetGameModeString(numPlayers);
         
         message = "^5" + mode + "^7 High Round: ^5" + round + "^7 (^5" + playersString + "^7)";
@@ -216,17 +330,16 @@ AnnounceCurrentRecord(numPlayers) {
     }
 }
 
-
+/**
+ * Announces a newly set high round to all players.
+ */
 AnnounceNewHighRound(players, round, numPlayers) {
     if (!isDefined(players)) players = [];
     if (!isDefined(round)) round = 0;
 
     playersString = "Unknown Player(s)";
     if (players.size > 0) {
-        playersString = players[0];
-        for (i = 1; i < players.size; i++) {
-            playersString += ", " + players[i];
-        }
+        playersString = ResolveRecordNames(players);
     }
     
     mode = GetGameModeString(numPlayers);
@@ -235,7 +348,9 @@ AnnounceNewHighRound(players, round, numPlayers) {
     BroadcastIprintln(message);
 }
 
-
+/**
+ * Broadcasts a message to all players using iprintln.
+ */
 BroadcastIprintln(message) {
     players = getplayers();
     for (i = 0; i < players.size; i++) {
@@ -243,7 +358,9 @@ BroadcastIprintln(message) {
     }
 }
 
-
+/**
+ * Helper function to get the player's name.
+ */
 GetPlayerName(player) {
     if (isDefined(player) && isDefined(player.playername)) {
         return player.playername;
@@ -251,12 +368,16 @@ GetPlayerName(player) {
     return "Unknown";
 }
 
-
+/**
+ * Helper function to get the game mode string (e.g., "1-player", "2-player").
+ */
 GetGameModeString(numPlayers) {
     return numPlayers + "-Player";
 }
 
-
+/**
+ * Custom string split function.
+ */
 StrSplit(input, delimiter) {
     parts = [];
     current = "";
@@ -273,4 +394,23 @@ StrSplit(input, delimiter) {
         parts[parts.size] = current;
     }
     return parts;
+}
+
+/**
+ * Cleans chat text to remove leading spaces and other characters.
+ */
+sanitizeChat(text) {
+    if (!isDefined(text)) return "";
+
+    for (i = 0; i < 64; i++) {
+        if (text == "") return "";
+
+        first = getSubStr(text, 0, 1);
+        if (first == " " || first == "§" || first == "\t") {
+            text = getSubStr(text, 1, 1024);
+            continue;
+        }
+        break;
+    }
+    return text;
 }
