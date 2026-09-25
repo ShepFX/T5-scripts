@@ -1,6 +1,6 @@
 // T5 ZM - Enemy Counter (ported from T6)
 // Drop into maps/ alongside other _zombiemode_* scripts.
-// Type .counter in chat to toggle the HUD on/off (preference saved to scriptdata/).
+// Type .counter in chat to toggle the HUD on/off (remembered for the session only).
 
 #include common_scripts\utility;
 #include maps\_utility;
