@@ -199,10 +199,25 @@ SrPlayerBlocks() {
 // Strip the characters the line format uses so a name can never break parsing.
 // The character loop is the expensive part, so run it only when a player's
 // name actually changes rather than on every scan.
+//
+// Black Ops zombies is built on single-player, where a player's name is
+// .playername; .name is frequently not set at all, which is why runs used to
+// be logged as "Player". Fall back to .name in case a build ever fills it, and
+// keep the last good name rather than replacing it with a placeholder - the
+// roster is rescanned every second, so a player who is still connecting is
+// picked up on a later pass.
 SrCachedName(player) {
-    raw = player.name;
-    if (!isDefined(raw))
+    raw = undefined;
+    if (isDefined(player.playername))
+        raw = player.playername;
+    else if (isDefined(player.name))
+        raw = player.name;
+
+    if (!isDefined(raw)) {
+        if (isDefined(player.srNameClean))
+            return player.srNameClean;
         return "Player";
+    }
 
     if (isDefined(player.srNameRaw) && player.srNameRaw == raw && isDefined(player.srNameClean))
         return player.srNameClean;
