@@ -1,6 +1,6 @@
-# CUKServers Black Ops (T5) zombie scripts
+# Shep Black Ops (T5) zombie scripts
 
-The GSC the CUKServers Black Ops (T5) servers actually run. Every file here was taken
+The GSC the Shep Black Ops (T5) servers actually run. Every file here was taken
 from a live server, so what is in this repo is what is running.
 
 Scripts install into `runtime/plutonium/storage/t5/raw/scripts/sp/` unless a folder's README says
@@ -24,7 +24,7 @@ deployed name is the one that matters — that is the filename to copy to.
 | `Speedrun/T5Speedrun.gsc` | `T5Speedrun.gsc` | 16 zombie servers |
 | `ZombieCounter/_Zombie_counter.gsc` | `T5_Zombie_counter.gsc` | 16 zombie servers |
 | `MapVote/T5MapVote.gsc` | `T5MapVote.gsc` | t5sp-first, t5sp-waw |
-| `MoonNMLFix/cuk_moon_nml_fix.gsc` | `cuk_moon_nml_fix.gsc` | t5sp-moon |
+| `MoonNMLFix/shep_moon_nml_fix.gsc` | `shep_moon_nml_fix.gsc` | t5sp-moon |
 | `RestartVote/T5RestartVote.gsc` | `T5RestartVote.gsc` | 16 zombie servers |
 | `StuckZombies/T5StuckZombies.gsc` | `T5StuckZombies.gsc` | 15 zombie servers |
 

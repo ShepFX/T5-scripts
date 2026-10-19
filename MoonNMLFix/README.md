@@ -11,5 +11,5 @@ the zombies that were actually left are restored as before.
 
 ## Installation
 
-Copy `cuk_moon_nml_fix.gsc` to `storage/t5/raw/scripts/sp/`. It does nothing on
+Copy `shep_moon_nml_fix.gsc` to `storage/t5/raw/scripts/sp/`. It does nothing on
 other maps.

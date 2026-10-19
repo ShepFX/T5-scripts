@@ -2,7 +2,7 @@
 #include common_scripts\utility;
 
 /*
-	CUK fix: Moon "teleport between rounds = 24 zombie round" exploit (stock BO1 bug)
+	Shep fix: Moon "teleport between rounds = 24 zombie round" exploit (stock BO1 bug)
 
 	Teleporting to No Man's Land between rounds runs zombie_moon_wasteland::nml_setup_round_spawner(),
 	which saves the next round's zombie count as

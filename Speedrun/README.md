@@ -2,7 +2,7 @@
 
 Black Ops 1 counterpart of the T6 speedrun logger. Logs how long a game took to
 reach milestone rounds (10, 20, 30, 40, 50, 70, 100) and to complete the map's
-main easter egg, so stats.cukservers.net can show "fastest to round N" and
+main easter egg, so stats.shep.rip can show "fastest to round N" and
 "fastest easter egg" boards per map and squad size.
 
 ## How it works
