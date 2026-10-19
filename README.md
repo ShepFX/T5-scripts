@@ -13,15 +13,19 @@ deployed name is the one that matters — that is the filename to copy to.
 
 | In this repo | Deployed as | Running on |
 | --- | --- | --- |
-| `AFK/_zm_afk_t5zm.gsc` | `_zm_afk_t5zm.gsc` | 14 zombie servers |
-| `AntiExploit/_zm_anti_exploit_t5.gsc` | `_zm_anti_exploit_t5.gsc` | 14 zombie servers |
+| `AFK/_zm_afk_t5zm.gsc` | `_zm_afk_t5zm.gsc` | 16 zombie servers |
+| `AntiExploit/_zm_anti_exploit_t5.gsc` | `_zm_anti_exploit_t5.gsc` | 16 zombie servers |
 | `FirstRoom/T5FirstRoomChallenge.gsc` | `T5FirstRoomChallenge.gsc` | t5sp-first |
-| `GameStats/T5GameStats.gsc` | `T5GameStats.gsc` | 13 zombie servers |
-| `LiveRound/T5LiveRound.gsc` | `T5LiveRound.gsc` | 14 zombie servers |
-| `Roundlock.gsc` | `T5PostRoundLock.gsc` | 14 zombie servers |
-| `RoundRecord/RoundRecordSaver.gsc` | `T5RoundSaverNew.gsc` | 14 zombie servers |
+| `GameStats/T5GameStats.gsc` | `T5GameStats.gsc` | 16 zombie servers |
+| `LiveRound/T5LiveRound.gsc` | `T5LiveRound.gsc` | 16 zombie servers |
+| `Roundlock.gsc` | `T5PostRoundLock.gsc` | 16 zombie servers |
+| `RoundRecord/RoundRecordSaver.gsc` | `T5RoundSaverNew.gsc` | 16 zombie servers |
 | `RunTimer/T5RunTimer.gsc` | `T5RunTimer.gsc` | 16 servers |
-| `Speedrun/T5Speedrun.gsc` | `T5Speedrun.gsc` | 14 zombie servers |
-| `ZombieCounter/_Zombie_counter.gsc` | `T5_Zombie_counter.gsc` | 14 zombie servers |
+| `Speedrun/T5Speedrun.gsc` | `T5Speedrun.gsc` | 16 zombie servers |
+| `ZombieCounter/_Zombie_counter.gsc` | `T5_Zombie_counter.gsc` | 16 zombie servers |
+| `MapVote/T5MapVote.gsc` | `T5MapVote.gsc` | t5sp-first, t5sp-waw |
+| `MoonNMLFix/cuk_moon_nml_fix.gsc` | `cuk_moon_nml_fix.gsc` | t5sp-moon |
+| `RestartVote/T5RestartVote.gsc` | `T5RestartVote.gsc` | 16 zombie servers |
+| `StuckZombies/T5StuckZombies.gsc` | `T5StuckZombies.gsc` | 15 zombie servers |
 
-Last verified against the live servers on 2026-09-25.
+Last verified against the live servers on 2026-10-19.

@@ -356,7 +356,21 @@ afk_activation_delay()
         if ( i == 30 || i == 10 || ( i <= 5 && i > 0 ) )
             self iPrintLn( "AFK in ^3" + i + "^7..." );
 
-        wait 1;
+        // A teleport cancels it: otherwise a map teleporter taken during the
+        // countdown (e.g. to a Pack-a-Punch room) becomes the spot un-AFK
+        // returns the player to, long after the map has moved them out.
+        for ( t = 0; t < 4; t++ )
+        {
+            last_origin = self.origin;
+            wait 0.25;
+            if ( distanceSquared( self.origin, last_origin ) > 250 * 250 )
+            {
+                println( "[AFK] activation cancelled (teleported) for " + self.playername );
+                self.afk_activating = false;
+                self iPrintLn( "AFK activation ^1cancelled^7 - you were teleported." );
+                return;
+            }
+        }
     }
 
     if ( !isAlive( self ) || self player_is_downed() )
@@ -384,6 +398,7 @@ activate_afk()
 
     self.afk_saved_origin = self.origin;
     self.afk_saved_angles = self getPlayerAngles();
+    self.afk_map_moved = false;
 
     // Where the position lock holds the player. Taken from the spawn point
     // itself: on T5 self.origin still reads the old spot for the rest of this
@@ -471,7 +486,14 @@ deactivate_afk()
 
     self.ignoreme = false;
 
-    if ( isDefined( self.afk_saved_origin ) )
+    if ( isDefined( self.afk_saved_origin ) && isDefined( self.afk_map_moved ) && self.afk_map_moved )
+    {
+        self iPrintLn( "The map moved you while AFK - you stay at spawn." );
+        println( "[AFK] " + self.playername + " was moved by the map while AFK; not restoring" );
+        self.afk_saved_origin = undefined;
+        self.afk_saved_angles = undefined;
+    }
+    else if ( isDefined( self.afk_saved_origin ) )
     {
         self setOrigin( self.afk_saved_origin );
         self setPlayerAngles( self.afk_saved_angles );
@@ -528,6 +550,11 @@ afk_position_lock( locked_origin, locked_angles )
 
         if ( distanceSquared( self.origin, locked_origin ) > 4 )
         {
+            // A teleporter, or a teleport room's timed return, moved them.
+            // Remembered so un-AFK does not put them back somewhere the map
+            // has since taken them out of.
+            if ( distanceSquared( self.origin, locked_origin ) > 250 * 250 )
+                self.afk_map_moved = true;
             self setOrigin( locked_origin );
             self setPlayerAngles( locked_angles );
         }

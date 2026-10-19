@@ -25,7 +25,9 @@
  * before a milestone. A new player joining from round 2 onward ends timing for
  * that game - otherwise a solo run could land on the 2P board, or a three-man
  * carry to round 28 could be logged as a 1P time. A roster member who drops
- * and rejoins is still on the roster.
+ * and rejoins is still on the roster. Anyone who left during round 1 is
+ * dropped when round 2 begins, so a player who quits early and is replaced
+ * does not turn a 4-man game into a 5P run.
  */
 
 main() {
@@ -60,6 +62,14 @@ InitSpeedrun() {
     level thread SrWatchEE("temple_sidequest_achieved",         "time_travel_will_tell");
     level thread SrWatchEE("moon_sidequest_reveal_achieved",    "cryogenic_slumber_party");
     level thread SrWatchEE("moon_sidequest_big_bang_achieved",  "big_bang_theory");
+
+    // Der Riese has no main quest; its easter egg is the Fly Trap - shoot the
+    // fly trap with a Pack-a-Punched weapon, then find the three hidden items
+    // (monkey bomb, Bowie knife bear, perk bear). Timed to the third item.
+    level thread SrWatchFlytrap();
+
+    // Song easter eggs, one per map, timed to the moment the song unlocks.
+    level thread SrWatchSong();
 }
 
 SrWaitForStart() {
@@ -103,8 +113,10 @@ SrWatchRounds() {
 
         lastRound = level.round_number;
 
-        if (lastRound >= 2)
+        if (lastRound >= 2 && !level.srRosterLocked) {
+            SrPruneRoster();
             level.srRosterLocked = true;
+        }
 
         if (SrIsMilestone(lastRound))
             SrLog("round", "" + lastRound);
@@ -140,12 +152,103 @@ SrUpdateRoster() {
     }
 }
 
+// Round 2 has begun: keep only the roster members still in the game.
+SrPruneRoster() {
+    players = getplayers();
+    kept = [];
+    for (r = 0; r < level.srRoster.size; r++) {
+        for (i = 0; i < players.size; i++) {
+            if (isDefined(players[i]) && "" + players[i] getGuid() == level.srRoster[r].guid) {
+                kept[kept.size] = level.srRoster[r];
+                break;
+            }
+        }
+    }
+    level.srRoster = kept;
+}
+
 SrRosterIndex(guid) {
     for (i = 0; i < level.srRoster.size; i++) {
         if (level.srRoster[i].guid == guid)
             return i;
     }
     return -1;
+}
+
+SrWatchFlytrap() {
+    level endon("end_game");
+
+    if (getDvar("mapname") != "zombie_cod5_factory")
+        return;
+
+    // Each hidden item sets its own flag when found (hide_and_seek_target in
+    // the map script), in any order; the egg is done when all three are set.
+    for (;;) {
+        wait 0.5;
+        if (SrFlagSet("ee_exp_monkey") && SrFlagSet("ee_bowie_bear") && SrFlagSet("ee_perk_bear"))
+            break;
+    }
+
+    if (isDefined(level.srStart) && !isDefined(level.srInvalid))
+        SrLog("ee", "fly_trap");
+}
+
+SrWatchSong() {
+    level endon("end_game");
+
+    map = getDvar("mapname");
+
+    // Ascension notifies the moment its song starts.
+    if (map == "zombie_cosmodrome") {
+        SrWatchEE("teddybear_music_started", "song_abracadavre");
+        return;
+    }
+
+    token = SrSongToken(map);
+    if (token == "")
+        return;
+
+    for (;;) {
+        wait 0.5;
+        if (SrSongUnlocked(map))
+            break;
+    }
+
+    if (isDefined(level.srStart) && !isDefined(level.srInvalid))
+        SrLog("ee", token);
+}
+
+SrSongToken(map) {
+    if (map == "zombie_theater")        return "song_115";
+    if (map == "zombie_pentagon")       return "song_wont_back_down";
+    if (map == "zombie_coast")          return "song_not_ready_to_die";
+    if (map == "zombie_temple")         return "song_pareidolia";
+    if (map == "zombie_moon")           return "song_coming_home";
+    if (map == "zombie_cod5_prototype") return "song_undone";
+    if (map == "zombie_cod5_asylum")    return "song_lullaby_of_a_dead_man";
+    if (map == "zombie_cod5_sumpf")     return "song_the_one";
+    if (map == "zombie_cod5_factory")   return "song_beauty_of_annihilation";
+    return "";
+}
+
+// What each map's song egg leaves behind when it unlocks.
+SrSongUnlocked(map) {
+    // Five: the third phone (the song itself starts 5 seconds later).
+    if (map == "zombie_pentagon")
+        return isDefined(level.phone_counter) && level.phone_counter >= 3;
+    // Nacht: the third egg shot.
+    if (map == "zombie_cod5_prototype")
+        return isDefined(level.egg_damage_counter) && level.egg_damage_counter >= 3;
+    // Verruckt and Shi No Numa keep no counter; on these two maps nothing but
+    // the song egg ever sets music_override.
+    if (map == "zombie_cod5_asylum" || map == "zombie_cod5_sumpf")
+        return isDefined(level.music_override) && level.music_override;
+    // Kino, Call of the Dead, Shangri-La, Moon, Der Riese: the third meteor.
+    return isDefined(level.meteor_counter) && level.meteor_counter >= 3;
+}
+
+SrFlagSet(name) {
+    return isDefined(level.flag) && isDefined(level.flag[name]) && level.flag[name];
 }
 
 SrWatchEE(notifyName, token) {
