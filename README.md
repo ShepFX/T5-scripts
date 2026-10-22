@@ -14,7 +14,6 @@ deployed name is the one that matters — that is the filename to copy to.
 | In this repo | Deployed as | Running on |
 | --- | --- | --- |
 | `AFK/_zm_afk_t5zm.gsc` | `_zm_afk_t5zm.gsc` | 16 zombie servers |
-| `AntiExploit/_zm_anti_exploit_t5.gsc` | `_zm_anti_exploit_t5.gsc` | 16 zombie servers |
 | `FirstRoom/T5FirstRoomChallenge.gsc` | `T5FirstRoomChallenge.gsc` | t5sp-first |
 | `GameStats/T5GameStats.gsc` | `T5GameStats.gsc` | 16 zombie servers |
 | `LiveRound/T5LiveRound.gsc` | `T5LiveRound.gsc` | 16 zombie servers |
