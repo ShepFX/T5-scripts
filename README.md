@@ -20,12 +20,11 @@ deployed name is the one that matters — that is the filename to copy to.
 | `LiveRound/T5LiveRound.gsc` | `T5LiveRound.gsc` | 16 zombie servers |
 | `Roundlock.gsc` | `T5PostRoundLock.gsc` | 16 zombie servers |
 | `RoundRecord/RoundRecordSaver.gsc` | `T5RoundSaverNew.gsc` | 16 zombie servers |
-| `RunTimer/T5RunTimer.gsc` | `T5RunTimer.gsc` | 16 servers |
 | `Speedrun/T5Speedrun.gsc` | `T5Speedrun.gsc` | 16 zombie servers |
-| `ZombieCounter/_Zombie_counter.gsc` | `T5_Zombie_counter.gsc` | 16 zombie servers |
+| `HUD/T5HUD.gsc` | `T5HUD.gsc` | 16 zombie servers (in `sp/zom/` on Kowloon and Chiisai) |
 | `MapVote/T5MapVote.gsc` | `T5MapVote.gsc` | t5sp-first, t5sp-waw |
 | `MoonNMLFix/shep_moon_nml_fix.gsc` | `shep_moon_nml_fix.gsc` | t5sp-moon |
 | `RestartVote/T5RestartVote.gsc` | `T5RestartVote.gsc` | 16 zombie servers |
 | `StuckZombies/T5StuckZombies.gsc` | `T5StuckZombies.gsc` | 15 zombie servers |
 
-Last verified against the live servers on 2026-10-19.
+Last verified against the live servers on 2026-10-22.
