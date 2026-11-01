@@ -40,6 +40,9 @@
  *     ...|0|-|grid|<cx>,<cy>,<cz>,<n>;...   time spent per 64x64x128-unit cell, every 5 minutes
  *     ...|0|-|mark|<type>:<name>:<x>,<y>,<z>   perks, PaP, box spots and wall buys, once per game
  * Cells are offset by 65536 so they are never negative: cx = int((x + 65536) / 64).
+ * Live radar (1 Nov 2026), BO1's stock maps only: every second, one line per player into the
+ * game log in the format IW4MAdmin's Live Radar reads, the team field holding up, down or dead:
+ *     LiveRadar;<guid hex>;<origin>;<angles>;<state>;0;0;0;none;<health>;<alive>;0
  *
  * Same code as T4GameStats.gsc. A bled-out player turns spectator until the
  * next round, which is what is watched (the same way on every game), and game
@@ -65,6 +68,7 @@ InitGameStats() {
     level thread GsFloorSample();
     level thread GsFloorFlush();
     level thread GsLogMarks();
+    level thread GsRadar();
     level thread GsWatchDrops();
 }
 
@@ -281,6 +285,53 @@ GsFloorSample() {
             level.gsFloor[key] = level.gsFloor[key] + 1;
         }
     }
+}
+
+// Live radar lines, stock maps only. The guid goes out in hex because the radar plugin parses it that way.
+GsRadar() {
+    map = getDvar("mapname");
+    stock = [];
+    stock[0] = "zombie_theater"; stock[1] = "zombie_pentagon"; stock[2] = "zombie_cosmodrome"; stock[3] = "zombie_coast";
+    stock[4] = "zombie_temple"; stock[5] = "zombie_moon"; stock[6] = "zombie_cod5_prototype"; stock[7] = "zombie_cod5_asylum";
+    stock[8] = "zombie_cod5_sumpf"; stock[9] = "zombie_cod5_factory";
+    found = false;
+    for (i = 0; i < stock.size; i++)
+        if (stock[i] == map)
+            found = true;
+    if (!found)
+        return;
+    for (;;) {
+        wait 1;
+        if (GsGameOver())
+            return;
+        players = getplayers();
+        for (i = 0; i < players.size; i++) {
+            p = players[i];
+            if (!isDefined(p))
+                continue;
+            alive = isDefined(p.sessionstate) && p.sessionstate == "playing";
+            state = "up";
+            if (!alive)
+                state = "dead";
+            else if (isDefined(p.revivetrigger))
+                state = "down";
+            logPrint("LiveRadar;" + GsHex(p getGuid()) + ";" + p.origin + ";" + p getPlayerAngles() + ";" + state
+                + ";0;0;0;none;" + GsNum(p.health) + ";" + GsNum(alive) + ";0\n");
+        }
+    }
+}
+
+GsHex(value) {
+    n = int(value);
+    if (n <= 0)
+        return "0";
+    digits = "0123456789abcdef";
+    out = "";
+    for (i = 0; i < 16 && n > 0; i++) {
+        out = digits[n % 16] + out;
+        n = int(n / 16);
+    }
+    return out;
 }
 
 // The counts go out every 5 minutes (and at game over), 40 cells a line.
