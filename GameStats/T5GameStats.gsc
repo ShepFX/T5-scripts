@@ -31,6 +31,16 @@
  * A session with no kills that lasted under 30 seconds is not written, so
  * someone connecting and leaving straight away adds nothing.
  *
+ * Box spins and downs also go one line each to scriptdata/gameevents.txt (31 Oct 2026):
+ *     <runId>|<mapname>|<round>|<port>|<id>|<name>|box|<weapon or "teddy">
+ *     <runId>|<mapname>|<round>|<port>|<id>|<name>|down|<x>,<y>,<z>
+ * A box line is the weapon the spin offered, taken or not; "teddy" moved the box.
+ * Once per game: ...|0|-|map|<x0>,<y0>,<x1>,<y1>,<northYaw> - the minimap corners (only where a map has them).
+ * Floor plans for the heatmaps (1 Nov 2026):
+ *     ...|0|-|grid|<cx>,<cy>,<cz>,<n>;...   time spent per 64x64x128-unit cell, every 5 minutes
+ *     ...|0|-|mark|<type>:<name>:<x>,<y>,<z>   perks, PaP, box spots and wall buys, once per game
+ * Cells are offset by 65536 so they are never negative: cx = int((x + 65536) / 64).
+ *
  * Same code as T4GameStats.gsc. A bled-out player turns spectator until the
  * next round, which is what is watched (the same way on every game), and game
  * over is the "end_game" notify or level.intermission, whichever comes first.
@@ -42,6 +52,7 @@ main() {
 
 InitGameStats() {
     level.gsFile = "scriptdata/gamestats.txt";
+    level.gsEventFile = "scriptdata/gameevents.txt";
     level.gsRunId = randomInt(1000000) + "-" + getTime();
     level.gsMapToken = getDvar("mapname");
     level.gsSessions = [];
@@ -49,6 +60,11 @@ InitGameStats() {
     level thread GsWatchPlayers();
     level thread GsWatchEnd();
     level thread GsWatchBoxes();
+    level thread GsWatchBoxSpins();
+    level thread GsLogMinimap();
+    level thread GsFloorSample();
+    level thread GsFloorFlush();
+    level thread GsLogMarks();
     level thread GsWatchDrops();
 }
 
@@ -87,6 +103,7 @@ GsTrackPlayer() {
     self thread GsWatchPerks(session);
     self thread GsWatchPerksHeld(session);
     self thread GsWatchPap(session);
+    self thread GsWatchDowns();
 
     // Keep a copy of the numbers, so a player who drops is still logged with
     // what they had - their entity is gone by the time "disconnect" arrives.
@@ -189,6 +206,165 @@ GsWatchBoxes() {
             if (isDefined(chest.chest_user.gsSession))
                 chest.chest_user.gsSession.box++;
         }
+    }
+}
+
+// Each spin ends with "randomization_done" on the chest's chest_origin, with the
+// offered weapon in weapon_string; a teddy bear leaves it undefined
+// (_zombiemode_weapons.gsc). chest_user is the player who paid.
+GsWatchBoxSpins() {
+    while (!isDefined(level.chests))
+        wait 1;
+    for (i = 0; i < level.chests.size; i++) {
+        if (isDefined(level.chests[i]) && isDefined(level.chests[i].chest_origin))
+            level.chests[i] thread GsWatchChest();
+    }
+}
+
+GsWatchChest() {
+    for (;;) {
+        self.chest_origin waittill("randomization_done");
+        user = self.chest_user;
+        if (!isDefined(user) || !isPlayer(user))
+            continue;
+        weapon = "teddy";
+        if (isDefined(self.chest_origin.weapon_string))
+            weapon = self.chest_origin.weapon_string;
+        GsEvent(user, "box", weapon);
+    }
+}
+
+// player.downs counts every down; where the player was when it went up.
+GsWatchDowns() {
+    self endon("disconnect");
+    last = GsNum(self.downs);
+    for (;;) {
+        wait 0.2;
+        now = GsNum(self.downs);
+        if (now > last)
+            GsEvent(self, "down", int(self.origin[0]) + "," + int(self.origin[1]) + "," + int(self.origin[2]));
+        last = now;
+    }
+}
+
+// The two minimap_corner entities the compass is drawn between (_compass.gsc).
+GsLogMinimap() {
+    wait 5;
+    corners = getEntArray("minimap_corner", "targetname");
+    if (corners.size != 2)
+        return;
+    data = int(corners[0].origin[0]) + "," + int(corners[0].origin[1]) + ","
+         + int(corners[1].origin[0]) + "," + int(corners[1].origin[1]) + "," + int(getNorthYaw());
+    line = level.gsRunId + "|" + level.gsMapToken + "|" + GsRound() + "|" + getDvar("net_port") + "|0|-|map|" + data;
+    file = fs_fopen(level.gsEventFile, "append");
+    if (isDefined(file) && file != 0) {
+        fs_writeline(file, line);
+        fs_fclose(file);
+    }
+}
+
+// Every 2 s, one count for the cell each playing player stands in.
+GsFloorSample() {
+    level.gsFloor = [];
+    for (;;) {
+        wait 2;
+        if (GsGameOver())
+            return;
+        players = getplayers();
+        for (i = 0; i < players.size; i++) {
+            p = players[i];
+            if (!isDefined(p) || !isDefined(p.sessionstate) || p.sessionstate != "playing")
+                continue;
+            key = int((p.origin[0] + 65536) / 64) + "," + int((p.origin[1] + 65536) / 64) + "," + int((p.origin[2] + 65536) / 128);
+            if (!isDefined(level.gsFloor[key]))
+                level.gsFloor[key] = 0;
+            level.gsFloor[key] = level.gsFloor[key] + 1;
+        }
+    }
+}
+
+// The counts go out every 5 minutes (and at game over), 40 cells a line.
+GsFloorFlush() {
+    for (;;) {
+        for (t = 0; t < 300 && !GsGameOver(); t++)
+            wait 1;
+        cells = level.gsFloor;
+        level.gsFloor = [];
+        if (isDefined(cells)) {
+            keys = getArrayKeys(cells);
+            data = "";
+            n = 0;
+            for (i = 0; i < keys.size; i++) {
+                if (n > 0)
+                    data = data + ";";
+                data = data + keys[i] + "," + cells[keys[i]];
+                n++;
+                if (n == 40 || i == keys.size - 1) {
+                    GsLevelLine("grid", data);
+                    data = "";
+                    n = 0;
+                }
+            }
+        }
+        if (GsGameOver())
+            return;
+    }
+}
+
+// Where the perk machines, Pack-a-Punch, box spots and wall buys are.
+GsLogMarks() {
+    wait 10;
+    vending = getEntArray("zombie_vending", "targetname");
+    for (i = 0; i < vending.size; i++) {
+        if (isDefined(vending[i].script_noteworthy))
+            GsMark("perk", vending[i].script_noteworthy, vending[i].origin);
+    }
+    pap = getEntArray("zombie_vending_upgrade", "targetname");
+    for (i = 0; i < pap.size; i++)
+        GsMark("pap", "specialty_weapupgrade", pap[i].origin);
+    for (t = 0; t < 1200 && !isDefined(level.chests); t++)
+        wait 1;
+    if (isDefined(level.chests)) {
+        for (i = 0; i < level.chests.size; i++) {
+            if (isDefined(level.chests[i]))
+                GsMark("box", "box", level.chests[i].origin);
+        }
+    }
+    wallbuys = getEntArray("weapon_upgrade", "targetname");
+    for (i = 0; i < wallbuys.size; i++) {
+        if (isDefined(wallbuys[i].zombie_weapon_upgrade))
+            GsMark("wall", wallbuys[i].zombie_weapon_upgrade, wallbuys[i].origin);
+    }
+}
+
+GsMark(type, name, origin) {
+    GsLevelLine("mark", type + ":" + name + ":" + int(origin[0]) + "," + int(origin[1]) + "," + int(origin[2]));
+}
+
+GsLevelLine(type, data) {
+    line = level.gsRunId + "|" + level.gsMapToken + "|" + GsRound() + "|" + getDvar("net_port") + "|0|-|" + type + "|" + data;
+    file = fs_fopen(level.gsEventFile, "append");
+    if (isDefined(file) && file != 0) {
+        fs_writeline(file, line);
+        fs_fclose(file);
+    }
+}
+
+GsEvent(player, type, data) {
+    if (GsGameOver())
+        return;
+    id = "" + player getGuid();
+    if (isDefined(player.persistentClientId))
+        id = "" + player.persistentClientId;
+    name = "";
+    if (isDefined(player.name))
+        name = GsCleanName(player.name);
+    line = level.gsRunId + "|" + level.gsMapToken + "|" + GsRound() + "|" + getDvar("net_port") + "|"
+         + id + "|" + name + "|" + type + "|" + data;
+    file = fs_fopen(level.gsEventFile, "append");
+    if (isDefined(file) && file != 0) {
+        fs_writeline(file, line);
+        fs_fclose(file);
     }
 }
 
