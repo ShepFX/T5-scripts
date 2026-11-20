@@ -62,6 +62,7 @@ InitGameStats() {
 
     level thread GsWatchPlayers();
     level thread GsWatchEnd();
+    level thread GsLiveStats();
     level thread GsWatchBoxes();
     level thread GsWatchBoxSpins();
     level thread GsLogMinimap();
@@ -300,8 +301,10 @@ GsRadar() {
             found = true;
     if (!found)
         return;
+    // [Shep 8 Nov] twice a second for a smoother, closer radar, but a player who hasn't moved, turned or
+    // changed state is only re-sent every 5 seconds, so the logs don't grow
     for (;;) {
-        wait 1;
+        wait 0.5;
         if (GsGameOver())
             return;
         players = getplayers();
@@ -315,8 +318,13 @@ GsRadar() {
                 state = "dead";
             else if (isDefined(p.revivetrigger))
                 state = "down";
-            logPrint("LiveRadar;" + GsHex(p getGuid()) + ";" + p.origin + ";" + p getPlayerAngles() + ";" + state
-                + ";0;0;0;none;" + GsNum(p.health) + ";" + GsNum(alive) + ";0\n");
+            line = GsHex(p getGuid()) + ";" + p.origin + ";" + p getPlayerAngles() + ";" + state
+                + ";0;0;0;none;" + GsNum(p.health) + ";" + GsNum(alive) + ";0";
+            if (isDefined(p.gs_radar_line) && p.gs_radar_line == line && getTime() - p.gs_radar_at < 5000)
+                continue;
+            p.gs_radar_line = line;
+            p.gs_radar_at = getTime();
+            logPrint("LiveRadar;" + line + "\n");
         }
     }
 }
@@ -579,4 +587,26 @@ GsCleanName(name) {
     if (out == "")
         return "Player";
     return out;
+}
+
+// [Shep 20 Nov 2026] live scoreboard for the site: every 3 seconds, one line per player whose numbers
+// changed (and every 30 seconds anyway) into the game log for the core:
+//     ZmLive;<guid>;<points>;<kills>;<downs>;<revives>;<headshots>
+GsLiveStats() {
+    for (;;) {
+        wait 3;
+        players = getplayers();
+        for (i = 0; i < players.size; i++) {
+            p = players[i];
+            if (!isDefined(p))
+                continue;
+            line = "" + p getGuid() + ";" + GsNum(p.score) + ";" + GsNum(p.kills) + ";" + GsNum(p.downs)
+                + ";" + GsNum(p.revives) + ";" + GsNum(p.headshots);
+            if (isDefined(p.gs_live_line) && p.gs_live_line == line && getTime() - p.gs_live_at < 30000)
+                continue;
+            p.gs_live_line = line;
+            p.gs_live_at = getTime();
+            logPrint("ZmLive;" + line + "\n");
+        }
+    }
 }
