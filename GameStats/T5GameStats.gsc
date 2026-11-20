@@ -595,6 +595,13 @@ GsCleanName(name) {
 GsLiveStats() {
     for (;;) {
         wait 3;
+        // and the round (20 Nov 2026), so the site shows it on every server, private slots too: ZmRound;<round>
+        liveRound = GsRound();
+        if (liveRound > 0 && (!isDefined(level.gs_live_round) || level.gs_live_round != liveRound || getTime() - level.gs_live_round_at > 30000)) {
+            level.gs_live_round = liveRound;
+            level.gs_live_round_at = getTime();
+            logPrint("ZmRound;" + liveRound + "\n");
+        }
         players = getplayers();
         for (i = 0; i < players.size; i++) {
             p = players[i];
